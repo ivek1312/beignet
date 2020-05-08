@@ -29,12 +29,12 @@
 using namespace llvm;
 
 namespace gbe {
-    class InstrinsicLowering : public BasicBlockPass
+    class InstrinsicLowering : public FunctionPass
     {
     public:
       static char ID;
       InstrinsicLowering() :
-        BasicBlockPass(ID) {}
+        FunctionPass(ID) {}
 
       void getAnalysisUsage(AnalysisUsage &AU) const {
 
@@ -77,7 +77,11 @@ namespace gbe {
         std::vector<Type *> ParamTys;
         for (Value** I = ArgBegin; I != ArgEnd; ++I)
           ParamTys.push_back((*I)->getType());
+#if LLVM_VERSION_MAJOR * 10 + LLVM_VERSION_MINOR >= 90
+        FunctionCallee FCache = M->getOrInsertFunction(NewFn,
+#else
         Constant* FCache = M->getOrInsertFunction(NewFn,
+#endif
                                         FunctionType::get(RetTy, ParamTys, false));
 
         IRBuilder<> Builder(CI->getParent(), BasicBlock::iterator(CI));
@@ -89,9 +93,9 @@ namespace gbe {
         CI->eraseFromParent();
         return NewCI;
       }
-      virtual bool runOnBasicBlock(BasicBlock &BB)
+      virtual bool runOnFunction(Function &F)
       {
-        bool changedBlock = false;
+        for (BasicBlock &BB : F) {
         Module *M = BB.getParent()->getParent();
 
         DataLayout TD(M);
@@ -155,13 +159,14 @@ namespace gbe {
             }
           }
         }
-        return changedBlock;
+        }
+        return true;
       }
     };
 
     char InstrinsicLowering::ID = 0;
 
-    BasicBlockPass *createIntrinsicLoweringPass() {
+    FunctionPass *createIntrinsicLoweringPass() {
       return new InstrinsicLowering();
     }
 } // end namespace

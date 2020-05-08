@@ -575,10 +575,12 @@ namespace gbe
         has_errors(false),
         legacyMode(true)
     {
+#if LLVM_VERSION_MAJOR < 10
 #if LLVM_VERSION_MAJOR * 10 + LLVM_VERSION_MINOR >= 37
       initializeLoopInfoWrapperPassPass(*PassRegistry::getPassRegistry());
 #else
       initializeLoopInfoPass(*PassRegistry::getPassRegistry());
+#endif
 #endif
       pass = PASS_EMIT_REGISTERS;
     }
@@ -3074,14 +3076,22 @@ namespace gbe
 
 
   static unsigned getChildNo(BasicBlock *bb) {
+#if LLVM_VERSION_MAJOR < 8
     TerminatorInst *term = bb->getTerminator();
+#else
+    Instruction *term = bb->getTerminator();
+#endif
     return term->getNumSuccessors();
   }
 
   // return NULL if index out-range of children number
   static BasicBlock *getChildPossible(BasicBlock *bb, unsigned index) {
 
+#if LLVM_VERSION_MAJOR < 8
     TerminatorInst *term = bb->getTerminator();
+#else
+    Instruction *term = bb->getTerminator();
+#endif
     unsigned childNo = term->getNumSuccessors();
     BasicBlock *child = NULL;
     if(index < childNo) {
